@@ -10,10 +10,7 @@
 
 ## 1. Tôi đã làm gì trong lab này? (100-150 từ)
 
-> Mô tả cụ thể phần bạn đóng góp vào pipeline:
-> - Sprint nào bạn chủ yếu làm?
-> - Cụ thể bạn implement hoặc quyết định điều gì?
-> - Công việc của bạn kết nối với phần của người khác như thế nào?
+> Sprint 3 em lựa chọn implement hybrid retrieval kết hợp rerank để tối ưu cả recall và precision. Cụ thể, pipeline được giữ nguyên bước retrieve rộng với retrieve_hybrid() nhằm tận dụng ưu điểm của dense (hiểu ngữ nghĩa) và sparse/BM25 (match keyword chính xác), giúp giảm miss các chunk quan trọng. Sau đó, bật use_rerank=True để áp dụng cross-encoder (ms-marco-MiniLM-L-6-v2) chấm lại độ liên quan giữa query và từng chunk, từ đó chọn ra top-3 chunk chất lượng cao nhất trước khi đưa vào prompt. Quyết định này dựa trên thực tế rằng hybrid giúp tăng coverage nhưng vẫn có noise, nên rerank đóng vai trò “lọc tinh”. So với baseline dense, variant này cải thiện rõ độ chính xác câu trả lời và giảm hallucination do context đầu vào sạch và sát hơn.
 
 _________________
 
@@ -21,9 +18,7 @@ _________________
 
 ## 2. Điều tôi hiểu rõ hơn sau lab này (100-150 từ)
 
-> Chọn 1-2 concept từ bài học mà bạn thực sự hiểu rõ hơn sau khi làm lab.
-> Ví dụ: chunking, hybrid retrieval, grounded prompt, evaluation loop.
-> Giải thích bằng ngôn ngữ của bạn — không copy từ slide.
+> Sau lab này, tôi hiểu rõ hơn về hybrid retrieval và grounded prompt. Với hybrid retrieval, trước đây tôi nghĩ chỉ cần dense là đủ, nhưng khi làm thực tế mới thấy dense có thể bỏ sót keyword quan trọng, còn BM25 lại không hiểu ngữ nghĩa. Kết hợp cả hai giúp tăng khả năng tìm đúng tài liệu liên quan, đặc biệt trong các query có cả thuật ngữ kỹ thuật và cách diễn đạt tự nhiên. Ngoài ra, grounded prompt giúp kiểm soát LLM tốt hơn rất nhiều. Thay vì để model trả lời tự do, việc ép nó chỉ dùng context đã retrieve và phải trích dẫn nguồn giúp giảm hallucination rõ rệt. Tôi nhận ra prompt không chỉ để “hỏi” mà còn là công cụ để “ràng buộc hành vi” của model.
 
 _________________
 

@@ -3,7 +3,7 @@
 **Họ và tên:** Nguyễn Đức Dũng  
 **MSSV:** 2A202600148  
 **Vai trò trong nhóm:** Tech Lead / Retrieval Owner / Eval Owner / Documentation Owner  
-**Ngày nộp:** ___________  
+**Ngày nộp:** 13/04/2026
 **Độ dài yêu cầu:** 500–800 từ
 
 ---
@@ -41,15 +41,12 @@ _________________
 
 ## 4. Phân tích một câu hỏi trong scorecard (150-200 từ)
 
-> Chọn 1 câu hỏi trong test_questions.json mà nhóm bạn thấy thú vị.
-> Phân tích:
-> - Baseline trả lời đúng hay sai? Điểm như thế nào?
-> - Lỗi nằm ở đâu: indexing / retrieval / generation?
-> - Variant có cải thiện không? Tại sao có/không?
-
-**Câu hỏi:** ___________
-
-**Phân tích:**
+> Câu hỏi: q09 — "ERR-403-AUTH là lỗi gì và cách xử lý?"
+Phân tích:
+Đây là test case để kiểm tra khả năng abstain khi hệ thống không có dữ liệu. Trong corpus hiện tại không tồn tại bất kỳ thông tin nào về mã lỗi ERR-403-AUTH.
+Baseline (dense): Dense retrieval vẫn trả về một số chunk từ IT Helpdesk FAQ có liên quan như “đăng nhập”, “tài khoản bị khóa”. Về mặt semantic thì gần với auth error, nhưng không match trực tiếp với ERR-403-AUTH. Nếu prompt không đủ strict, LLM sẽ infer từ các chunk này và generate câu trả lời không grounded → dẫn đến hallucination, làm giảm faithfulness.
+Root cause: Nằm ở bước generation, không phải retrieval. Retriever đã trả về best-effort candidates, nhưng LLM cần detect được lack of exact evidence và trigger abstain.
+Variant (hybrid + rerank): Khi thêm rerank (cross-encoder), các chunk chỉ “semantic match” sẽ bị score thấp hơn do không align trực tiếp với query. Kết hợp với prompt anti-hallucination, pipeline sẽ filter context tốt hơn và output đúng hành vi: abstain với thông báo không có dữ liệu liên quan.
 
 _________________
 

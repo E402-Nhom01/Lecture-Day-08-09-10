@@ -31,6 +31,7 @@ llm_model = "gemini-2.5-flash"
 **Câu hỏi yếu nhất (điểm thấp):**
 
 q07 (Approval Matrix) -> Do sử dụng thuần Dense Retrieval
+
 q10 (Hoàn tiền VIP) -> top_k_select = 3 quá hẹp
 
 **Giả thuyết nguyên nhân (Error Tree):**

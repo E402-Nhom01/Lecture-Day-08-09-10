@@ -3,7 +3,9 @@
 **Họ và tên:** Nguyễn Đức Trí  
 **MSSV:** 2A202600394  
 **Vai trò trong nhóm:** Retrieval Owner (sprint 3)
+
 **Ngày nộp:**13/04/2026
+
 **Độ dài yêu cầu:** 500–800 từ
 
 ---

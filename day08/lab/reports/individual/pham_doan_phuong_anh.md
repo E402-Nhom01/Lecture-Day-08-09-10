@@ -45,17 +45,17 @@ _________________
 
 ## 4. Phân tích một câu hỏi trong scorecard (150-200 từ)
 
-> Chọn 1 câu hỏi trong test_questions.json mà nhóm bạn thấy thú vị.
-> Phân tích:
-> - Baseline trả lời đúng hay sai? Điểm như thế nào?
-> - Lỗi nằm ở đâu: indexing / retrieval / generation?
-> - Variant có cải thiện không? Tại sao có/không?
+Câu hỏi: q09 — "ERR-403-AUTH là lỗi gì và cách xử lý?"
 
-**Câu hỏi:** ___________
+Phân tích:
 
-**Phân tích:**
+Đây là một câu hỏi khá “tricky” vì thực chất nó dùng để test khả năng abstain của hệ thống. Trong toàn bộ corpus không hề có thông tin nào liên quan trực tiếp đến mã lỗi ERR-403-AUTH.
 
-_________________
+Ở baseline (dense retrieval), hệ thống vẫn retrieve ra các chunk kiểu IT Helpdesk FAQ có nội dung liên quan như “đăng nhập”, “tài khoản bị khóa”. Những chunk này về mặt semantic thì khá gần với “auth error”, nên nhìn qua có vẻ hợp lý. Tuy nhiên, nó không hề chứa đúng thông tin về ERR-403-AUTH. Nếu prompt không đủ chặt, model rất dễ “tự fill” vào chỗ trống và bịa ra câu trả lời → dẫn đến hallucination và điểm faithfulness thấp.
+
+Theo mình, lỗi chính ở đây nằm ở generation, không phải retrieval. Retriever đã làm đúng vai trò của nó là lấy những gì “gần nhất có thể”. Nhưng model cần nhận ra rằng không có chunk nào thực sự match với câu hỏi và phải chọn abstain. Đây là case rất rõ để test chất lượng của grounded prompt.
+
+Ở variant (hybrid + rerank), kết quả ổn hơn. Cross-encoder giúp chấm lại relevance chính xác hơn, nên những chunk chỉ “gần nghĩa” sẽ bị đẩy xuống score thấp. Khi kết hợp với prompt anti-hallucination mạnh, model đã chọn abstain đúng kiểu: “Không tìm thấy thông tin về ERR-403-AUTH trong tài liệu hiện có.” → đây là hành vi mình kỳ vọng.
 
 ---
 

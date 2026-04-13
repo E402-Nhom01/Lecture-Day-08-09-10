@@ -18,31 +18,34 @@
 ```
 
 **Mô tả ngắn gọn:**
-> TODO: Mô tả hệ thống trong 2-3 câu. Nhóm xây gì? Cho ai dùng? Giải quyết vấn đề gì?
+Hệ thống RAG hỗ trợ tra cứu tài liệu nội bộ của công ty. Người dùng là nhân viên bộ phận IT, HR, và CS. Nó giúp tìm kiếm thông tin và có trích dẫn nguồn cụ thể.
 
 ---
 
 ## 2. Indexing Pipeline (Sprint 1)
 
 ### Tài liệu được index
-| File | Nguồn | Department | Số chunk |
-|------|-------|-----------|---------|
-| `policy_refund_v4.txt` | policy/refund-v4.pdf | CS | TODO |
-| `sla_p1_2026.txt` | support/sla-p1-2026.pdf | IT | TODO |
-| `access_control_sop.txt` | it/access-control-sop.md | IT Security | TODO |
-| `it_helpdesk_faq.txt` | support/helpdesk-faq.md | IT | TODO |
-| `hr_leave_policy.txt` | hr/leave-policy-2026.pdf | HR | TODO |
+
+| File                     | Nguồn                    | Department  | Số chunk |
+| ------------------------ | ------------------------ | ----------- | -------- |
+| `policy_refund_v4.txt`   | policy/refund-v4.pdf     | CS          | 6        |
+| `sla_p1_2026.txt`        | support/sla-p1-2026.pdf  | IT          | 5        |
+| `access_control_sop.txt` | it/access-control-sop.md | IT Security | 7        |
+| `it_helpdesk_faq.txt`    | support/helpdesk-faq.md  | IT          | 6        |
+| `hr_leave_policy.txt`    | hr/leave-policy-2026.pdf | HR          | 5        |
 
 ### Quyết định chunking
-| Tham số | Giá trị | Lý do |
-|---------|---------|-------|
-| Chunk size | TODO tokens | TODO |
-| Overlap | TODO tokens | TODO |
-| Chunking strategy | Heading-based / paragraph-based | TODO |
-| Metadata fields | source, section, effective_date, department, access | Phục vụ filter, freshness, citation |
+
+| Tham số           | Giá trị                                             | Lý do                                                                               |
+| ----------------- | --------------------------------------------------- | ----------------------------------------------------------------------------------- |
+| Chunk size        | 400 tokens                                          | Cân bằng giữa việc giữ đủ ngữ cảnh và độ chính xác khi retrieval.                   |
+| Overlap           | 80 tokens                                           | Tránh mất thông tin quan trọng nằm ở ranh giới giữa các chunk.                      |
+| Chunking strategy | Heading-based / paragraph-based                     | Ưu tiên giữ cấu trúc logic của tài liệu (section) và cắt nhỏ theo đoạn văn nếu cần. |
+| Metadata fields   | source, section, effective_date, department, access | Phục vụ filter, freshness, citation                                                 |
 
 ### Embedding model
-- **Model**: TODO (OpenAI text-embedding-3-small / paraphrase-multilingual-MiniLM-L12-v2)
+
+- **Model**: `paraphrase-multilingual-MiniLM-L12-v2` (Sentence Transformers)
 - **Vector store**: ChromaDB (PersistentClient)
 - **Similarity metric**: Cosine
 

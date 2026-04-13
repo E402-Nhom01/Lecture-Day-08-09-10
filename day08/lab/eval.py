@@ -23,7 +23,37 @@ from pathlib import Path
 from typing import List, Dict, Any, Optional
 from datetime import datetime
 from rag_answer import rag_answer
+import os
+import json
+import google.generativeai as genai
 
+genai.configure(api_key=os.getenv("GOOGLE_API_KEY"))
+
+model = genai.GenerativeModel("gemini-2.5-flash-lite")
+
+import re
+
+def extract_json(text: str):
+    match = re.search(r"\{.*\}", text, re.DOTALL)
+    if match:
+        return json.loads(match.group())
+    return {"score": None, "reason": "JSON_PARSE_FAIL"}
+
+def call_llm_judge(prompt: str) -> Dict[str, Any]:
+    try:
+        response = model.generate_content(
+            prompt,
+            generation_config={"temperature": 0}
+        )
+
+        text = response.text.strip()
+        return extract_json(text)
+
+    except Exception as e:
+        return {
+            "score": None,
+            "reason": f"GEMINI_ERROR: {e}"
+        }
 # =============================================================================
 # CẤU HÌNH
 # =============================================================================
@@ -56,68 +86,69 @@ VARIANT_CONFIG = {
 # 4 metrics từ slide: Faithfulness, Answer Relevance, Context Recall, Completeness
 # =============================================================================
 
-def score_faithfulness(
-    answer: str,
-    chunks_used: List[Dict[str, Any]],
-) -> Dict[str, Any]:
-    """
-    Faithfulness: Câu trả lời có bám đúng chứng cứ đã retrieve không?
-    Câu hỏi: Model có tự bịa thêm thông tin ngoài retrieved context không?
+def score_faithfulness(answer: str, chunks_used: List[Dict[str, Any]]) -> Dict[str, Any]:
+    context = "\n\n".join([
+        c.get("text", "")[:300] for c in chunks_used
+    ])
 
-    Thang điểm 1-5:
-      5: Mọi thông tin trong answer đều có trong retrieved chunks
-      4: Gần như hoàn toàn grounded, 1 chi tiết nhỏ chưa chắc chắn
-      3: Phần lớn grounded, một số thông tin có thể từ model knowledge
-      2: Nhiều thông tin không có trong retrieved chunks
-      1: Câu trả lời không grounded, phần lớn là model bịa
+    prompt = f"""
+You are an evaluator for a RAG system.
 
-    TODO Sprint 4 — Có 2 cách chấm:
+Retrieved context:
+{context}
 
-    Cách 1 — Chấm thủ công (Manual, đơn giản):
-        Đọc answer và chunks_used, chấm điểm theo thang trên.
-        Ghi lý do ngắn gọn vào "notes".
+Answer:
+{answer}
 
-    Cách 2 — LLM-as-Judge (Tự động, nâng cao):
-        Gửi prompt cho LLM:
-            "Given these retrieved chunks: {chunks}
-             And this answer: {answer}
-             Rate the faithfulness on a scale of 1-5.
-             5 = completely grounded in the provided context.
-             1 = answer contains information not in the context.
-             Output JSON: {'score': <int>, 'reason': '<string>'}"
+Task:
+Rate the FAITHFULNESS (1-5)
 
-    Trả về dict với: score (1-5) và notes (lý do)
-    """
-    # TODO Sprint 4: Implement scoring
-    # Tạm thời trả về None (yêu cầu chấm thủ công)
+Definition:
+5 = fully grounded in context
+4 = mostly grounded
+3 = partially grounded
+2 = mostly not grounded
+1 = hallucinated
+
+STRICTLY output JSON:
+{{"score": int, "reason": "short explanation"}}
+"""
+
+    result = call_llm_judge(prompt)
+
     return {
-        "score": None,
-        "notes": "TODO: Chấm thủ công hoặc implement LLM-as-Judge",
+        "score": result.get("score"),
+        "notes": result.get("reason"),
     }
 
 
-def score_answer_relevance(
-    query: str,
-    answer: str,
-) -> Dict[str, Any]:
-    """
-    Answer Relevance: Answer có trả lời đúng câu hỏi người dùng hỏi không?
-    Câu hỏi: Model có bị lạc đề hay trả lời đúng vấn đề cốt lõi không?
+def score_answer_relevance(query: str, answer: str) -> Dict[str, Any]:
+    prompt = f"""
+Evaluate RELEVANCE.
 
-    Thang điểm 1-5:
-      5: Answer trả lời trực tiếp và đầy đủ câu hỏi
-      4: Trả lời đúng nhưng thiếu vài chi tiết phụ
-      3: Trả lời có liên quan nhưng chưa đúng trọng tâm
-      2: Trả lời lạc đề một phần
-      1: Không trả lời câu hỏi
+Question:
+{query}
 
-    TODO Sprint 4: Implement tương tự score_faithfulness
-    """
+Answer:
+{answer}
+
+Scale:
+5 = directly answers fully
+4 = correct but slightly incomplete
+3 = somewhat relevant
+2 = partially off-topic
+1 = irrelevant
+
+Output JSON only:
+{{"score": int, "reason": "short explanation"}}
+"""
+
+    result = call_llm_judge(prompt)
+
     return {
-        "score": None,
-        "notes": "TODO: Implement score_answer_relevance",
+        "score": result.get("score"),
+        "notes": result.get("reason"),
     }
-
 
 def score_context_recall(
     chunks_used: List[Dict[str, Any]],
@@ -175,35 +206,39 @@ def score_context_recall(
     }
 
 
-def score_completeness(
-    query: str,
-    answer: str,
-    expected_answer: str,
-) -> Dict[str, Any]:
-    """
-    Completeness: Answer có thiếu điều kiện ngoại lệ hoặc bước quan trọng không?
-    Câu hỏi: Answer có bao phủ đủ thông tin so với expected_answer không?
+def score_completeness(query: str, answer: str, expected_answer: str) -> Dict[str, Any]:
+    if not expected_answer:
+        return {"score": None, "notes": "No expected answer"}
 
-    Thang điểm 1-5:
-      5: Answer bao gồm đủ tất cả điểm quan trọng trong expected_answer
-      4: Thiếu 1 chi tiết nhỏ
-      3: Thiếu một số thông tin quan trọng
-      2: Thiếu nhiều thông tin quan trọng
-      1: Thiếu phần lớn nội dung cốt lõi
+    prompt = f"""
+Evaluate COMPLETENESS.
 
-    TODO Sprint 4:
-    Option 1 — Chấm thủ công: So sánh answer vs expected_answer và chấm.
-    Option 2 — LLM-as-Judge:
-        "Compare the model answer with the expected answer.
-         Rate completeness 1-5. Are all key points covered?
-         Output: {'score': int, 'missing_points': [str]}"
-    """
+Question:
+{query}
+
+Expected answer:
+{expected_answer}
+
+Model answer:
+{answer}
+
+Scale:
+5 = covers all key points
+4 = minor missing detail
+3 = missing some important info
+2 = missing many key points
+1 = largely incomplete
+
+Output JSON only:
+{{"score": int, "reason": "short explanation"}}
+"""
+
+    result = call_llm_judge(prompt)
+
     return {
-        "score": None,
-        "notes": "TODO: Implement score_completeness (so sánh với expected_answer)",
+        "score": result.get("score"),
+        "notes": result.get("reason"),
     }
-
-
 # =============================================================================
 # SCORECARD RUNNER
 # =============================================================================

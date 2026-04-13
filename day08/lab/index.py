@@ -128,6 +128,7 @@ def chunk_document(doc: Dict[str, Any]) -> List[Dict[str, Any]]:
         List các Dict, mỗi dict là một chunk với:
           - "text": nội dung chunk
           - "metadata": metadata gốc + "section" của chunk đó
+          
 
     TODO Sprint 1:
     1. Split theo heading "=== Section ... ===" hoặc "=== Phần ... ===" trước

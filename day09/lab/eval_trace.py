@@ -304,6 +304,7 @@ def analyze_traces(traces_dir: str = "artifacts/traces") -> dict:
     mcp_calls = 0
     hitl_triggers = 0
     source_counts = {}
+    judge_buckets = {"faithfulness": [], "relevance": [], "correctness": [], "completeness": []}
 
     for t in traces:
         route = t.get("supervisor_route", "unknown")
@@ -326,7 +327,19 @@ def analyze_traces(traces_dir: str = "artifacts/traces") -> dict:
         for src in t.get("retrieved_sources", []):
             source_counts[src] = source_counts.get(src, 0) + 1
 
+        judge = t.get("judge_scores") or {}
+        for k in judge_buckets:
+            v = judge.get(k)
+            if isinstance(v, (int, float)):
+                judge_buckets[k].append(float(v))
+
     total = len(traces)
+    judge_avgs = {
+        k: (round(sum(vs) / len(vs), 3) if vs else None)
+        for k, vs in judge_buckets.items()
+    }
+    n_judged = len(judge_buckets["faithfulness"])
+
     metrics = {
         "total_traces": total,
         "routing_distribution": {k: f"{v}/{total} ({100*v//total}%)" for k, v in routing_counts.items()},
@@ -335,6 +348,8 @@ def analyze_traces(traces_dir: str = "artifacts/traces") -> dict:
         "mcp_usage_rate": f"{mcp_calls}/{total} ({100*mcp_calls//total}%)" if total else "0%",
         "hitl_rate": f"{hitl_triggers}/{total} ({100*hitl_triggers//total}%)" if total else "0%",
         "top_sources": sorted(source_counts.items(), key=lambda x: -x[1])[:5],
+        "llm_judge_coverage": f"{n_judged}/{total}" if total else "0/0",
+        "llm_judge_avg": judge_avgs,
     }
 
     return metrics

@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-04-14T17:26:52.904097",
+  "generated_at": "2026-04-14T17:33:23.434213",
   "day08_single_agent": {
     "total_questions": 15,
     "avg_confidence": 0.0,
@@ -8,37 +8,44 @@
     "multi_hop_accuracy": "?"
   },
   "day09_multi_agent": {
-    "total_traces": 110,
+    "total_traces": 120,
     "routing_distribution": {
-      "retrieval_worker": "64/110 (58%)",
-      "policy_tool_worker": "46/110 (41%)"
+      "retrieval_worker": "70/120 (58%)",
+      "policy_tool_worker": "50/120 (41%)"
     },
-    "avg_confidence": 0.438,
-    "avg_latency_ms": 12955,
-    "mcp_usage_rate": "21/110 (19%)",
-    "hitl_rate": "9/110 (8%)",
+    "avg_confidence": 0.448,
+    "avg_latency_ms": 12959,
+    "mcp_usage_rate": "25/120 (20%)",
+    "hitl_rate": "9/120 (7%)",
     "top_sources": [
       [
         "policy_refund_v4.txt",
-        69
+        77
       ],
       [
         "sla_p1_2026.txt",
-        49
+        56
       ],
       [
         "hr_leave_policy.txt",
-        49
+        55
       ],
       [
         "it_helpdesk_faq.txt",
-        45
+        50
       ],
       [
         "access_control_sop.txt",
-        42
+        46
       ]
-    ]
+    ],
+    "llm_judge_coverage": "20/120",
+    "llm_judge_avg": {
+      "faithfulness": 0.75,
+      "relevance": 0.63,
+      "correctness": 0.6,
+      "completeness": 0.49
+    }
   },
   "analysis": {
     "routing_visibility": "Day 09 có route_reason cho từng câu → dễ debug hơn Day 08",
@@ -53,7 +60,7 @@
       "route_accuracy": "0/10 (0%)",
       "source_hit_rate": "0/0 (0%)",
       "avg_source_recall": 0.0,
-      "abstain_precision": "3/10 (30%)"
+      "abstain_precision": "4/10 (40%)"
     },
     "per_question": [
       {
@@ -142,7 +149,7 @@
         ],
         "source_recall": null,
         "source_hit": null,
-        "confidence": 0.95,
+        "confidence": 0.5,
         "abstain_expected": true,
         "abstain_actual": false
       },
@@ -160,9 +167,9 @@
         ],
         "source_recall": null,
         "source_hit": null,
-        "confidence": 0.95,
+        "confidence": 0.05,
         "abstain_expected": true,
-        "abstain_actual": false
+        "abstain_actual": true
       },
       {
         "id": "gq07",

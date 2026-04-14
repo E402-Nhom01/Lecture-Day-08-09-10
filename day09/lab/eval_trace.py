@@ -30,7 +30,7 @@ from graph import run_graph, save_trace
 # 1. Run Pipeline on Test Questions
 # ─────────────────────────────────────────────
 
-def run_test_questions(questions_file: str = "data/test_questions.json") -> list:
+def run_test_questions(questions_file: str = "data/grading_questions.json") -> list:
     """
     Chạy pipeline với danh sách câu hỏi, lưu trace từng câu.
 
@@ -428,7 +428,7 @@ if __name__ == "__main__":
     parser.add_argument("--grading", action="store_true", help="Run grading questions")
     parser.add_argument("--analyze", action="store_true", help="Analyze existing traces")
     parser.add_argument("--compare", action="store_true", help="Compare single vs multi")
-    parser.add_argument("--test-file", default="data/test_questions.json", help="Test questions file")
+    parser.add_argument("--test-file", default="data/grading_questions.json", help="Test questions file")
     args = parser.parse_args()
 
     if args.grading:

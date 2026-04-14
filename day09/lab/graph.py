@@ -11,6 +11,7 @@ Chạy thử:
 
 import json
 import os
+import re
 from datetime import datetime
 from typing import TypedDict, Literal, Optional
 
@@ -69,7 +70,7 @@ def make_initial_state(task: str) -> AgentState:
         "workers_called": [],
         "supervisor_route": "",
         "latency_ms": None,
-        "run_id": f"run_{datetime.now().strftime('%Y%m%d_%H%M%S')}",
+        "run_id": f"run_{datetime.now().strftime('%Y%m%d_%H%M%S_%f')}",
     }
 
 
@@ -89,42 +90,49 @@ def supervisor_node(state: AgentState) -> AgentState:
     task = state["task"].lower()
     state["history"].append(f"[supervisor] received task: {state['task'][:80]}")
 
-    # --- TODO: Implement routing logic ---
-    # Gợi ý:
-    # - "hoàn tiền", "refund", "flash sale", "license" → policy_tool_worker
-    # - "cấp quyền", "access level", "level 3", "emergency" → policy_tool_worker
-    # - "P1", "escalation", "sla", "ticket" → retrieval_worker
-    # - mã lỗi không rõ (ERR-XXX), không đủ context → human_review
-    # - còn lại → retrieval_worker
-
-    route = "retrieval_worker"         # TODO: thay bằng logic thực
-    route_reason = "default route"    # TODO: thay bằng lý do thực
+    route = "retrieval_worker"
+    route_reason = ""
     needs_tool = False
     risk_high = False
 
-    # Ví dụ routing cơ bản — nhóm phát triển thêm:
-    policy_keywords = ["hoàn tiền", "refund", "flash sale", "license", "cấp quyền", "access", "level 3"]
-    risk_keywords = ["emergency", "khẩn cấp", "2am", "không rõ", "err-"]
+    policy_kw = [
+        "hoàn tiền", "refund", "flash sale", "license",
+        "cấp quyền", "access level", "level 3", "level 2", "admin access",
+    ]
+    retrieval_kw = [
+        "p1", "sla", "ticket", "escalation", "sự cố", "remote", "probation",
+    ]
+    emergency_kw = ["emergency", "khẩn cấp", "2am", "22:", "on-call"]
+    err_match = re.search(r"err-[a-z0-9\-]+", task)
 
-    if any(kw in task for kw in policy_keywords):
+    policy_hits = [kw for kw in policy_kw if kw in task]
+    retrieval_hits = [kw for kw in retrieval_kw if kw in task]
+
+    if policy_hits:
         route = "policy_tool_worker"
-        route_reason = f"task contains policy/access keyword"
+        route_reason = f"policy/access keyword matched: {policy_hits}"
         needs_tool = True
+    elif retrieval_hits:
+        route = "retrieval_worker"
+        route_reason = f"retrieval keyword matched: {retrieval_hits}"
+    else:
+        route_reason = "default → retrieval_worker (no specific keyword)"
 
-    if any(kw in task for kw in risk_keywords):
+    if any(kw in task for kw in emergency_kw):
         risk_high = True
-        route_reason += " | risk_high flagged"
+        route_reason += " | risk_high: emergency signal"
 
-    # Human review override
-    if risk_high and "err-" in task:
+    # Unknown error code + không có context khác → HITL
+    if err_match and not (policy_hits or retrieval_hits):
         route = "human_review"
-        route_reason = "unknown error code + risk_high → human review"
+        route_reason = f"unknown error code '{err_match.group()}', no supporting context → HITL"
+        risk_high = True
 
     state["supervisor_route"] = route
     state["route_reason"] = route_reason
     state["needs_tool"] = needs_tool
     state["risk_high"] = risk_high
-    state["history"].append(f"[supervisor] route={route} reason={route_reason}")
+    state["history"].append(f"[supervisor] route={route} | reason={route_reason}")
 
     return state
 
@@ -321,6 +329,7 @@ if __name__ == "__main__":
         "SLA xử lý ticket P1 là bao lâu?",
         "Khách hàng Flash Sale yêu cầu hoàn tiền vì sản phẩm lỗi — được không?",
         "Cần cấp quyền Level 3 để khắc phục P1 khẩn cấp. Quy trình là gì?",
+        "ERR-403-AUTH là lỗi gì?",
     ]
 
     for query in test_queries:

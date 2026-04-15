@@ -8,7 +8,7 @@
 | Huynh Thai Bao | Embed & Idempotency Owner | ___ |
 | Nguyen Duc Tri | Docs / Contract Owner | ductri412004@gmail.com |
 | Pham Doan Phuong Anh | Ingestion / Raw Owner | ___ |
-| Nguyen Duc Dung | Monitoring / Freshness Owner | ___ |
+| Nguyen Duc Dung | Monitoring / Freshness Owner | adung2912d03@gmail.com |
 
 **Ngày nộp:** 2026-04-15
 **Repo:** ___________

@@ -8,7 +8,7 @@
 | Nguyen Duc Dung | Cleaning & Quality Owner | ___ |
 | Huynh Thai Bao | Embed & Idempotency Owner | ___ |
 | Truong Minh Tien | Monitoring / Docs Owner | marcuschill1823@gmail.com |
-| Nguyen Duc Tri | Monitoring / Docs Owner | marcuschill1823@gmail.com |
+| Nguyen Duc Tri | Monitoring / Docs Owner | ductri412004@gmail.com |
 
 **Ngày nộp:** 2026-04-15
 **Repo:** ___________

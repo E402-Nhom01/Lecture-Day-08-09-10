@@ -10,6 +10,7 @@ from __future__ import annotations
 import csv
 import hashlib
 import re
+import unicodedata
 from pathlib import Path
 from typing import Any, Dict, List, Tuple
 
@@ -25,6 +26,33 @@ ALLOWED_DOC_IDS = frozenset(
 
 _ISO_DATE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
 _DMY_SLASH = re.compile(r"^(\d{2})/(\d{2})/(\d{4})$")
+_ISO_DATETIME = re.compile(
+    r"^\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}(:\d{2})?(\.\d+)?(Z|[+-]\d{2}:?\d{2})?$"
+)
+
+# Cut-off: chunk có effective_date vượt mốc này bị coi là export lỗi (typo năm).
+FAR_FUTURE_CUTOFF = "2028-01-01"
+
+# Ký tự zero-width / BOM thường xuất hiện do export CSV từ Excel hoặc copy-paste web.
+_ZERO_WIDTH_CHARS = "\ufeff\u200b\u200c\u200d\u2060"
+
+
+def _strip_zero_width(s: str) -> str:
+    if not s:
+        return s
+    for ch in _ZERO_WIDTH_CHARS:
+        s = s.replace(ch, "")
+    return s
+
+
+def _unicode_clean(s: str) -> str:
+    """NFKC + strip zero-width + collapse NBSP to space. Giữ nguyên case/dấu."""
+    if not s:
+        return s
+    s = unicodedata.normalize("NFKC", s)
+    s = _strip_zero_width(s)
+    s = s.replace("\xa0", " ")
+    return s
 
 
 def _norm_text(s: str) -> str:
@@ -77,6 +105,14 @@ def clean_rows(
     4) Quarantine: chunk_text rỗng hoặc effective_date rỗng sau chuẩn hoá.
     5) Loại trùng nội dung chunk_text (giữ bản đầu).
     6) Fix stale refund: policy_refund_v4 chứa '14 ngày làm việc' → 7 ngày.
+
+    Mở rộng (Sprint 2 — metric_impact ghi trong reports/group_report.md):
+    7) R7 unicode_normalize_strip_zero_width: NFKC + strip BOM/ZWSP; quarantine nếu
+       chunk_text chứa replacement-char U+FFFD (mojibake do sai encoding).
+    8) R8 exported_at_must_be_iso: quarantine nếu exported_at rỗng hoặc không phải
+       ISO 8601 datetime (ngăn freshness_check đọc sai mốc thời gian).
+    9) R9 effective_date_not_far_future: quarantine nếu effective_date > FAR_FUTURE_CUTOFF
+       (chống typo năm kiểu 2099 làm lệch ưu tiên version).
     """
     quarantine: List[Dict[str, Any]] = []
     seen_text: set[str] = set()
@@ -84,13 +120,23 @@ def clean_rows(
     seq = 0
 
     for raw in rows:
-        doc_id = raw.get("doc_id", "")
-        text = raw.get("chunk_text", "")
-        eff_raw = raw.get("effective_date", "")
-        exported_at = raw.get("exported_at", "")
+        doc_id = _unicode_clean(raw.get("doc_id", ""))
+        text = _unicode_clean(raw.get("chunk_text", ""))
+        eff_raw = _unicode_clean(raw.get("effective_date", ""))
+        exported_at = _unicode_clean(raw.get("exported_at", ""))
+
+        # R7: replacement char = sai encoding đầu nguồn → không tự sửa được.
+        if "\ufffd" in text or "\ufffd" in doc_id:
+            quarantine.append({**raw, "reason": "mojibake_detected"})
+            continue
 
         if doc_id not in ALLOWED_DOC_IDS:
             quarantine.append({**raw, "reason": "unknown_doc_id"})
+            continue
+
+        # R8: exported_at cần ISO 8601 để freshness_check parse đúng.
+        if not exported_at or not _ISO_DATETIME.match(exported_at):
+            quarantine.append({**raw, "reason": "invalid_exported_at_format"})
             continue
 
         eff_norm, eff_err = _normalize_effective_date(eff_raw)
@@ -99,6 +145,17 @@ def clean_rows(
             continue
         if eff_err == "invalid_effective_date_format":
             quarantine.append({**raw, "reason": eff_err, "effective_date_raw": eff_raw})
+            continue
+
+        # R9: chặn export lỗi với năm bị typo (vd 2099-01-01) trước khi embed.
+        if eff_norm > FAR_FUTURE_CUTOFF:
+            quarantine.append(
+                {
+                    **raw,
+                    "reason": "effective_date_far_future",
+                    "effective_date_normalized": eff_norm,
+                }
+            )
             continue
 
         if doc_id == "hr_leave_policy" and eff_norm < "2026-01-01":

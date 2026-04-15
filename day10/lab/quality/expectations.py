@@ -112,5 +112,40 @@ def run_expectations(cleaned_rows: List[Dict[str, Any]]) -> Tuple[List[Expectati
         )
     )
 
+    # E7: cleaned phải có ít nhất 1 chunk hr_leave_policy bản 2026+.
+    # Nếu clean quarantine quá tay và xoá luôn bản mới → halt (positive invariant).
+    hr_current = [
+        r
+        for r in cleaned_rows
+        if r.get("doc_id") == "hr_leave_policy"
+        and (r.get("effective_date") or "") >= "2026-01-01"
+    ]
+    ok7 = len(hr_current) >= 1
+    results.append(
+        ExpectationResult(
+            "hr_leave_has_current_2026_version",
+            ok7,
+            "halt",
+            f"current_hr_chunks={len(hr_current)}",
+        )
+    )
+
+    # E8: exported_at phải là ISO 8601 datetime — defense-in-depth cho freshness_check.
+    iso_dt = re.compile(
+        r"^\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}(:\d{2})?(\.\d+)?(Z|[+-]\d{2}:?\d{2})?$"
+    )
+    bad_exp = [
+        r for r in cleaned_rows if not iso_dt.match((r.get("exported_at") or "").strip())
+    ]
+    ok8 = len(bad_exp) == 0
+    results.append(
+        ExpectationResult(
+            "exported_at_is_iso_datetime",
+            ok8,
+            "halt",
+            f"non_iso_exported_at={len(bad_exp)}",
+        )
+    )
+
     halt = any(not r.passed and r.severity == "halt" for r in results)
     return results, halt

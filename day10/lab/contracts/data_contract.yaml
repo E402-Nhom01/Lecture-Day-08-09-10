@@ -3,7 +3,7 @@
 
 version: "1.0"
 dataset: "kb_chunk_export"
-owner_team: "__TODO__"
+owner_team: "E402-Nhom01"  # đổi nếu tên nhóm khác
 
 schema_cleaned:
   chunk_id:
@@ -32,11 +32,25 @@ quality_rules:
   - id: "no_stale_refund_window"
     description: "Không được để chunk policy refund chứa cửa sổ 14 ngày (lệch so với v4 = 7 ngày)"
     severity: "halt"
+  # Rule mới Sprint 2 (đồng bộ transform/cleaning_rules.py + quality/expectations.py)
+  - id: "unicode_normalize_strip_zero_width"
+    description: "NFKC + strip BOM/ZWSP/NBSP; quarantine nếu chunk có U+FFFD (mojibake không tự sửa)"
+    severity: "halt"  # quarantine reason: mojibake_detected
+  - id: "exported_at_must_be_iso"
+    description: "Quarantine nếu exported_at rỗng hoặc không phải ISO 8601 datetime (ngăn freshness parse sai)"
+    severity: "halt"
+  - id: "effective_date_not_far_future"
+    description: "Quarantine nếu effective_date > 2028-01-01 (chống typo năm, vd 2099)"
+    severity: "halt"
+  - id: "hr_leave_has_current_2026_version"
+    description: "Positive invariant: cleaned phải còn ≥1 chunk hr_leave_policy với effective_date >= 2026-01-01"
+    severity: "halt"
 
 freshness:
-  measured_at: "publish"  # ingest | cleaned | publish
+  measured_at: "ingest"  # đang đo tại ingest-boundary qua max(exported_at); publish-boundary là gap sẽ bổ sung
   sla_hours: 24
-  alert_channel: "__TODO__"
+  alert_channel: "#e402-nhom01-data-alerts"  # Slack (placeholder — thay nếu lớp có kênh chính thức)
+  owner_oncall: "Monitoring / Docs Owner (Truong Minh Tien)"
 
 canonical_sources:
   - path: "data/docs/policy_refund_v4.txt"
